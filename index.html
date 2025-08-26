@@ -3,15 +3,16 @@
 <head>
   <title>Fyang Live Tracker</title>
   <style>
-    body { font-family: Arial; text-align: center; margin-top: 50px; }
-    .box { font-size: 22px; padding: 20px; border-radius: 10px; background: #f0f0f0; display: inline-block; }
+    body { font-family: Arial; text-align: center; margin-top: 40px; }
+    .box { font-size: 20px; padding: 20px; border-radius: 10px; background: #f0f0f0; display: inline-block; }
     .gap-green { color: green; font-weight: bold; }
     .gap-red { color: red; font-weight: bold; }
-    .added { font-size: 18px; color: gray; }
+    .added { font-size: 16px; color: gray; }
   </style>
 </head>
 <body>
   <div class="box">
+    <div id="time"></div>
     <div id="fyang"></div>
     <div id="will"></div>
     <div id="gap"></div>
@@ -22,13 +23,14 @@
 
     let prevFyang = null;
     let prevWill = null;
+    let prevDiff = null;
 
     async function fetchVotes() {
       try {
         let response = await fetch(POLL_URL);
         let text = await response.text();
 
-        // Regex to extract candidates + votes
+        // Extract candidates + votes
         let matches = [...text.matchAll(/class="pds-answer-text"[^>]*>(.*?)<\/span>.*?\(([\d,]+)\s+votes\)/gs)];
 
         let fyang = null, will = null;
@@ -40,37 +42,47 @@
         }
 
         if (fyang !== null && will !== null) {
-          // Calculate added votes
+          // Added since last update
           let fyangAdded = prevFyang !== null ? fyang - prevFyang : 0;
           let willAdded = prevWill !== null ? will - prevWill : 0;
+          let diff = fyang - will;
 
-          // Update previous values
+          let diffAdded = prevDiff !== null ? diff - prevDiff : 0;
+
           prevFyang = fyang;
           prevWill = will;
+          prevDiff = diff;
 
-          // Show results
+          // Timestamp
+          document.getElementById("time").innerText = "⏱️ " + new Date().toLocaleTimeString();
+
+          // Vote totals + added
           document.getElementById("fyang").innerHTML =
-            `Fyang Smith: ${fyang.toLocaleString()} <span class="added">(+${fyangAdded})</span>`;
+            `Fyang Smith: ${fyang.toLocaleString()} votes <span class="added">(+${fyangAdded.toLocaleString()})</span>`;
           document.getElementById("will").innerHTML =
-            `Will Ashley: ${will.toLocaleString()} <span class="added">(+${willAdded})</span>`;
+            `Will Ashley: ${will.toLocaleString()} votes <span class="added">(+${willAdded.toLocaleString()})</span>`;
 
-          // Gap
-          let diff = fyang - will;
-          let gapText = "";
-          let gapElem = document.getElementById("gap");
-
-          if (diff > 0) {
-            gapText = `Gap: ${diff.toLocaleString()} (Fyang leading)`;
-            gapElem.className = "gap-green";
-          } else if (diff < 0) {
-            gapText = `Gap: ${Math.abs(diff).toLocaleString()} (Will leading)`;
-            gapElem.className = "gap-red";
+          // Format gap + diff change with colors
+          let diffAddedStr = "";
+          if (diffAdded > 0) {
+            diffAddedStr = `<span class="gap-green">(+${diffAdded.toLocaleString()})</span>`;
+          } else if (diffAdded < 0) {
+            diffAddedStr = `<span class="gap-red">(${diffAdded.toLocaleString()})</span>`;
           } else {
-            gapText = `Gap: 0 (Tied)`;
-            gapElem.className = "";
+            diffAddedStr = "(0)";
           }
+          
+          let gapText = "";
+          if (diff > 0) {
+            gapText = `Gap: ${diff.toLocaleString()} ${diffAddedStr} Fyang leading`;
+          } else if (diff < 0) {
+            gapText = `Gap: ${Math.abs(diff).toLocaleString()} ${diffAddedStr} Will leading`;
+          } else {
+            gapText = `Gap: 0 ${diffAddedStr} Tied`;
+          }
+          
+          document.getElementById("gap").innerHTML = gapText;
 
-          gapElem.innerText = gapText;
         } else {
           document.getElementById("gap").innerText = "⚠️ Candidates not found";
         }
@@ -81,7 +93,7 @@
     }
 
     fetchVotes();
-    setInterval(fetchVotes, 1000); // update every 1 second
+    setInterval(fetchVotes, 1000); // update every second
   </script>
 </body>
 </html>

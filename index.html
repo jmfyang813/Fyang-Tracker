@@ -3,27 +3,14 @@
 <head>
   <title>Fyang Live Tracker</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      margin-top: 50px; 
-      background: #fafafa;
-    }
-    h1 { font-size: 28px; margin-bottom: 20px; }
-    .box { 
-      font-size: 22px; 
-      padding: 20px; 
-      border-radius: 12px; 
-      background: #fff; 
-      display: inline-block; 
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
+    body { font-family: Arial; text-align: center; margin-top: 50px; }
+    .box { font-size: 22px; padding: 20px; border-radius: 10px; background: #f0f0f0; display: inline-block; }
     .gap-green { color: green; font-weight: bold; }
     .gap-red { color: red; font-weight: bold; }
+    .added { font-size: 18px; color: gray; }
   </style>
 </head>
 <body>
-  <h1>📊 Fyang Live Tracker</h1>
   <div class="box">
     <div id="fyang"></div>
     <div id="will"></div>
@@ -33,12 +20,15 @@
   <script>
     const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
 
+    let prevFyang = null;
+    let prevWill = null;
+
     async function fetchVotes() {
       try {
         let response = await fetch(POLL_URL);
         let text = await response.text();
 
-        // Regex to extract candidate names and votes
+        // Regex to extract candidates + votes
         let matches = [...text.matchAll(/class="pds-answer-text"[^>]*>(.*?)<\/span>.*?\(([\d,]+)\s+votes\)/gs)];
 
         let fyang = null, will = null;
@@ -50,32 +40,48 @@
         }
 
         if (fyang !== null && will !== null) {
-          document.getElementById("fyang").innerText = "🔥 Fyang Smith: " + fyang.toLocaleString();
-          document.getElementById("will").innerText = "⭐ Will Ashley: " + will.toLocaleString();
+          // Calculate added votes
+          let fyangAdded = prevFyang !== null ? fyang - prevFyang : 0;
+          let willAdded = prevWill !== null ? will - prevWill : 0;
 
+          // Update previous values
+          prevFyang = fyang;
+          prevWill = will;
+
+          // Show results
+          document.getElementById("fyang").innerHTML =
+            `Fyang Smith: ${fyang.toLocaleString()} <span class="added">(+${fyangAdded})</span>`;
+          document.getElementById("will").innerHTML =
+            `Will Ashley: ${will.toLocaleString()} <span class="added">(+${willAdded})</span>`;
+
+          // Gap
           let diff = fyang - will;
+          let gapText = "";
           let gapElem = document.getElementById("gap");
 
           if (diff > 0) {
-            gapElem.innerText = `Gap: ${diff.toLocaleString()} (Fyang leading)`;
+            gapText = `Gap: ${diff.toLocaleString()} (Fyang leading)`;
             gapElem.className = "gap-green";
           } else if (diff < 0) {
-            gapElem.innerText = `Gap: ${Math.abs(diff).toLocaleString()} (Will leading)`;
+            gapText = `Gap: ${Math.abs(diff).toLocaleString()} (Will leading)`;
             gapElem.className = "gap-red";
           } else {
-            gapElem.innerText = `Gap: 0 (Tied)`;
+            gapText = `Gap: 0 (Tied)`;
             gapElem.className = "";
           }
+
+          gapElem.innerText = gapText;
         } else {
           document.getElementById("gap").innerText = "⚠️ Candidates not found";
         }
+
       } catch (err) {
         document.getElementById("gap").innerText = "⚠️ Fetch failed";
       }
     }
 
     fetchVotes();
-    setInterval(fetchVotes, 1000); // refresh every 1 sec
+    setInterval(fetchVotes, 1000); // update every 1 second
   </script>
 </body>
 </html>

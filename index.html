@@ -1,78 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Fyang Live Tracker</title>
+  <title>Live Vote Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #fafafa; }
-    .box { font-size: 32px; padding: 30px; border-radius: 15px; background: #f0f0f0; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    #fyang, #will { font-size: 36px; margin: 15px 0; }
-    #gap { font-size: 40px; margin-top: 20px; font-weight: bold; }
-    .gap-green { color: green; }
-    .gap-red { color: red; }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; background: #fafafa; }
+    .box { font-size: 28px; padding: 25px; border-radius: 12px; background: #fff; display: inline-block; box-shadow: 0 0 12px rgba(0,0,0,0.1); }
+    .title { font-size: 36px; margin-bottom: 20px; font-weight: bold; }
+    .candidate { margin: 15px 0; }
+    .gap-green { color: green; font-weight: bold; font-size: 30px; }
+    .gap-red { color: red; font-weight: bold; font-size: 30px; }
+    .added { font-size: 20px; color: #555; }
   </style>
 </head>
 <body>
   <div class="box">
-    <div id="fyang"></div>
-    <div id="will"></div>
-    <div id="gap"></div>
+    <div class="title">Live Vote Counter</div>
+    <div class="candidate" id="fyang"></div>
+    <div class="candidate" id="will"></div>
+    <div class="candidate" id="gap"></div>
   </div>
 
   <script>
-    const POLL_ID = "15909793";
-    let prevFyang = null, prevWill = null;
+    const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
+    let prevFyang = null, prevWill = null, prevDiff = null;
 
-    function updateVotes(data) {
-      // parse JSON inside returned JS
-      let html = data.responses[0].i;
-      let fyangMatch = html.match(/Fyang Smith.*?(\d+)/i);
-      let willMatch = html.match(/Will Ashley.*?(\d+)/i);
+    async function fetchVotes() {
+      try {
+        let response = await fetch(POLL_URL);
+        let text = await response.text();
 
-      if (fyangMatch && willMatch) {
-        let fyang = parseInt(fyangMatch[1].replace(/,/g, ''));
-        let will = parseInt(willMatch[1].replace(/,/g, ''));
+        let matches = [...text.matchAll(/class="pds-answer-text"[^>]*>(.*?)<\/span>.*?\(([\d,]+)\s+votes\)/gs)];
 
-        let fyangAdded = prevFyang !== null ? fyang - prevFyang : 0;
-        let willAdded = prevWill !== null ? will - prevWill : 0;
-
-        document.getElementById("fyang").innerText =
-          `Fyang Smith: ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()})`;
-        document.getElementById("will").innerText =
-          `Will Ashley: ${will.toLocaleString()} (+${willAdded.toLocaleString()})`;
-
-        let diff = fyang - will;
-        let diffAdded = (fyangAdded - willAdded);
-        let gapElem = document.getElementById("gap");
-
-        if (diff > 0) {
-          gapElem.innerText = `Gap: ${diff.toLocaleString()} (+${diffAdded.toLocaleString()}) Fyang leading`;
-          gapElem.className = "gap-green";
-        } else if (diff < 0) {
-          gapElem.innerText = `Gap: ${Math.abs(diff).toLocaleString()} (${diffAdded.toLocaleString()}) Will leading`;
-          gapElem.className = "gap-red";
-        } else {
-          gapElem.innerText = `Gap: 0 (${diffAdded.toLocaleString()}) Tied`;
-          gapElem.className = "";
+        let fyang = null, will = null;
+        for (let m of matches) {
+          let name = m[1].trim().toUpperCase();
+          let votes = parseInt(m[2].replace(/,/g, ''));
+          if (name.includes("FYANG")) fyang = votes;
+          if (name.includes("WILL ASHLEY")) will = votes;
         }
 
-        prevFyang = fyang;
-        prevWill = will;
+        if (fyang !== null && will !== null) {
+          let fyangAdded = prevFyang !== null ? fyang - prevFyang : 0;
+          let willAdded = prevWill !== null ? will - prevWill : 0;
+
+          document.getElementById("fyang").innerHTML =
+            `Fyang Smith: ${fyang.toLocaleString()} <span class="added">(+${
+              fyangAdded.toLocaleString()
+            })</span>`;
+
+          document.getElementById("will").innerHTML =
+            `Will Ashley: ${will.toLocaleString()} <span class="added">(+${
+              willAdded.toLocaleString()
+            })</span>`;
+
+          let diff = fyang - will;
+          let diffAdded = prevDiff !== null ? diff - prevDiff : 0;
+          let gapElem = document.getElementById("gap");
+
+          if (diff > 0) {
+            gapElem.className = "gap-green";
+            gapElem.innerHTML = `Gap: ${diff.toLocaleString()} <span class="added">(${
+              diffAdded >= 0 ? "+" : ""
+            }${diffAdded.toLocaleString()})</span> Fyang leading`;
+          } else if (diff < 0) {
+            gapElem.className = "gap-red";
+            gapElem.innerHTML = `Gap: ${Math.abs(diff).toLocaleString()} <span class="added">(${
+              diffAdded >= 0 ? "+" : ""
+            }${diffAdded.toLocaleString()})</span> Will leading`;
+          } else {
+            gapElem.className = "";
+            gapElem.innerText = `Gap: 0 (Tied)`;
+          }
+
+          prevFyang = fyang;
+          prevWill = will;
+          prevDiff = diff;
+        } else {
+          document.getElementById("gap").innerText = "⚠️ Candidates not found";
+        }
+      } catch (err) {
+        document.getElementById("gap").innerText = "⚠️ Fetch failed";
       }
     }
 
-    function fetchVotes() {
-      let script = document.createElement("script");
-      script.src = `https://polls.polldaddy.com/vote-js.php?p=${POLL_ID}&a=0&b=0&_=${Date.now()}`;
-      document.body.appendChild(script);
-    }
-
-    // override pollDaddy callback
-    window.PDRTJS_Respond = function(data) {
-      updateVotes(data);
-    };
-
     fetchVotes();
-    setInterval(fetchVotes, 2000); // refresh every 2s
+    setInterval(fetchVotes, 3000); // update every 3 seconds
   </script>
 </body>
 </html>

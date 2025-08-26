@@ -3,29 +3,10 @@
 <head>
   <title>Fyang Live Tracker</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      margin-top: 50px; 
-      background: #fafafa;
-    }
-    .box { 
-      font-size: 32px;   /* Increased base font size */
-      padding: 30px; 
-      border-radius: 15px; 
-      background: #f0f0f0; 
-      display: inline-block; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    #fyang, #will { 
-      font-size: 36px;   /* Bigger for candidate votes */
-      margin: 15px 0; 
-    }
-    #gap { 
-      font-size: 40px;   /* Even bigger for the gap */
-      margin-top: 20px; 
-      font-weight: bold;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #fafafa; }
+    .box { font-size: 32px; padding: 30px; border-radius: 15px; background: #f0f0f0; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    #fyang, #will { font-size: 36px; margin: 15px 0; }
+    #gap { font-size: 40px; margin-top: 20px; font-weight: bold; }
     .gap-green { color: green; }
     .gap-red { color: red; }
   </style>
@@ -38,32 +19,29 @@
   </div>
 
   <script>
-    const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
+    const POLL_ID = "15909793";
+    const POLL_URL = `https://polls.polldaddy.com/vote-js.php?p=${POLL_ID}`;
     let prevFyang = null, prevWill = null;
 
     async function fetchVotes() {
       try {
-        let response = await fetch(POLL_URL);
+        let response = await fetch(POLL_URL + "&_=" + Date.now()); // add timestamp to avoid caching
         let text = await response.text();
 
-        // Extract candidates and votes
-        let matches = [...text.matchAll(/class="pds-answer-text"[^>]*>(.*?)<\/span>.*?\(([\d,]+)\s+votes\)/gs)];
+        // Extract votes from raw poll data (similar to Python regex)
+        let fyangMatch = text.match(/Fyang Smith.*?(\d+)/i);
+        let willMatch = text.match(/Will Ashley.*?(\d+)/i);
 
-        let fyang = null, will = null;
-        for (let m of matches) {
-          let name = m[1].trim().toUpperCase();
-          let votes = parseInt(m[2].replace(/,/g, ''));
-          if (name.includes("FYANG")) fyang = votes;
-          if (name.includes("WILL ASHLEY")) will = votes;
-        }
+        if (fyangMatch && willMatch) {
+          let fyang = parseInt(fyangMatch[1].replace(/,/g, ''));
+          let will = parseInt(willMatch[1].replace(/,/g, ''));
 
-        if (fyang !== null && will !== null) {
           let fyangAdded = prevFyang !== null ? fyang - prevFyang : 0;
           let willAdded = prevWill !== null ? will - prevWill : 0;
 
-          document.getElementById("fyang").innerText = 
+          document.getElementById("fyang").innerText =
             `Fyang Smith: ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()})`;
-          document.getElementById("will").innerText = 
+          document.getElementById("will").innerText =
             `Will Ashley: ${will.toLocaleString()} (+${willAdded.toLocaleString()})`;
 
           let diff = fyang - will;
@@ -71,18 +49,20 @@
           let gapElem = document.getElementById("gap");
 
           if (diff > 0) {
-            gapElem.innerText = `Gap: ${diff.toLocaleString()} (+${diffAdded}) Fyang leading`;
+            gapElem.innerText = `Gap: ${diff.toLocaleString()} (+${diffAdded.toLocaleString()}) Fyang leading`;
             gapElem.className = "gap-green";
           } else if (diff < 0) {
-            gapElem.innerText = `Gap: ${Math.abs(diff).toLocaleString()} (${diffAdded}) Will leading`;
+            gapElem.innerText = `Gap: ${Math.abs(diff).toLocaleString()} (${diffAdded.toLocaleString()}) Will leading`;
             gapElem.className = "gap-red";
           } else {
-            gapElem.innerText = `Gap: 0 (${diffAdded}) Tied`;
+            gapElem.innerText = `Gap: 0 (${diffAdded.toLocaleString()}) Tied`;
             gapElem.className = "";
           }
 
           prevFyang = fyang;
           prevWill = will;
+        } else {
+          document.getElementById("gap").innerText = "⚠️ Could not parse votes";
         }
       } catch (err) {
         document.getElementById("gap").innerText = "⚠️ Fetch failed";

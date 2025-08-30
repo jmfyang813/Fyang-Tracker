@@ -11,7 +11,7 @@
     .gap-red { color: red; font-weight: bold; }
     .added { font-size: 18px; color: #555; }
     .log { margin-top: 20px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; }
-    .log-entry { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .log-entry { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -71,10 +71,10 @@
           let gapText = "";
 
           if (diff > 0) {
-            gapText = `Gap: ${diff.toLocaleString()} (+${diffAdded.toLocaleString()}) Fyang leading`;
+            gapText = `Gap: ${diff.toLocaleString()} (${diffAdded >= 0 ? "+" : ""}${diffAdded.toLocaleString()}) Fyang leading`;
             document.getElementById("gap").className = "gap-green";
           } else if (diff < 0) {
-            gapText = `Gap: ${Math.abs(diff).toLocaleString()} (+${diffAdded.toLocaleString()}) Will leading`;
+            gapText = `Gap: ${Math.abs(diff).toLocaleString()} (${diffAdded >= 0 ? "+" : ""}${diffAdded.toLocaleString()}) Will leading`;
             document.getElementById("gap").className = "gap-red";
           } else {
             gapText = "Gap: 0 (Tied)";
@@ -82,13 +82,13 @@
 
           document.getElementById("gap").innerText = gapText;
 
-          // Save log entry
+          // Save log entry in requested format
           let now = new Date();
           let time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-          let logEntry = `⏱ ${time} → Fyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()}), Will : ${will.toLocaleString()} (+${willAdded.toLocaleString()}), ${gapText}`;
+          let logEntry = `⏱ ${time}\nFyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()})\nWill : ${will.toLocaleString()} (+${willAdded.toLocaleString()})\n${gapText}`;
 
           logs.unshift(logEntry); // add new entry at top
-          if (logs.length > 20) logs.pop(); // keep only 20
+          if (logs.length > 20) logs.pop(); // keep only last 20
 
           let logDiv = document.getElementById("log");
           logDiv.innerHTML = logs.map(l => `<div class="log-entry">${l}</div>`).join("");
@@ -119,4 +119,3 @@
   </script>
 </body>
 </html>
-

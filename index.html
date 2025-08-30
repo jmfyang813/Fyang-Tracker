@@ -10,11 +10,13 @@
     .gap-green { color: green; font-weight: bold; font-size: 30px; }
     .gap-red { color: red; font-weight: bold; font-size: 30px; }
     .added { font-size: 20px; color: #555; }
+    .datetime { font-size: 20px; margin-top: 20px; color: #333; }
   </style>
 </head>
 <body>
   <div class="box">
     <div class="title">Live Vote Counter</div>
+    <div id="datetime" class="datetime"></div> <!-- Date & Time -->
     <div class="candidate" id="fyang"></div>
     <div class="candidate" id="will"></div>
     <div class="candidate" id="gap"></div>
@@ -23,6 +25,22 @@
   <script>
     const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
     let prevFyang = null, prevWill = null, prevDiff = null;
+
+    // ✅ Function to show Philippine date & time
+    function updateDateTime() {
+      const now = new Date();
+      const options = {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      };
+      document.getElementById("datetime").innerText =
+        new Intl.DateTimeFormat("en-PH", options).format(now) + " (Philippines Time)";
+    }
 
     async function fetchVotes() {
       try {
@@ -83,11 +101,11 @@
       }
     }
 
+    // Run both functions
     fetchVotes();
-    setInterval(fetchVotes, 10000); // update every 30 seconds
+    setInterval(fetchVotes, 10000); // update every 10 sec
+    updateDateTime();
+    setInterval(updateDateTime, 1000); // update clock every 1 sec
   </script>
 </body>
 </html>
-
-
-

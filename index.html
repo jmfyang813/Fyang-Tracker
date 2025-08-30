@@ -10,43 +10,51 @@
     .gap-green { color: green; font-weight: bold; font-size: 30px; }
     .gap-red { color: red; font-weight: bold; font-size: 30px; }
     .added { font-size: 20px; color: #555; }
-    .datetime { font-size: 20px; margin-top: 20px; color: #333; }
+    .clock { margin-top: 20px; font-size: 22px; color: #333; }
+    .log { margin-top: 25px; padding: 15px; width: 400px; max-width: 90%; margin-left: auto; margin-right: auto; background: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: left; font-size: 16px; }
+    .log-entry { margin-bottom: 8px; }
   </style>
 </head>
 <body>
   <div class="box">
     <div class="title">Live Vote Counter</div>
-    <div id="datetime" class="datetime"></div> <!-- Date & Time -->
     <div class="candidate" id="fyang"></div>
     <div class="candidate" id="will"></div>
     <div class="candidate" id="gap"></div>
+    <div class="clock" id="clock"></div>
+  </div>
+
+  <div class="log" id="log">
+    <b>Last 5 Updates:</b>
   </div>
 
   <script>
     const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
     let prevFyang = null, prevWill = null, prevDiff = null;
 
-    // ✅ Show Philippine date & time (updates every second)
-    function updateDateTime() {
-      const now = new Date();
-      const options = {
-        timeZone: "Asia/Manila",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      };
-      document.getElementById("datetime").innerText =
-        new Intl.DateTimeFormat("en-PH", options).format(now) + " (Philippines Time)";
+    // Clock updater (every second)
+    function updateClock() {
+      let now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+      document.getElementById("clock").innerText = "⏱ " + now;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
-      // Every 10 seconds (exactly at :00, :10, :20...)
-      if (now.getSeconds() % 10 === 0) {
-        fetchVotes();
+    // Function to log updates (keep only last 5)
+    function logUpdate(text) {
+      let logBox = document.getElementById("log");
+      let entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.innerText = text;
+      logBox.appendChild(entry);
+
+      // remove old entries if more than 5
+      while (logBox.getElementsByClassName("log-entry").length > 5) {
+        logBox.removeChild(logBox.getElementsByClassName("log-entry")[0]);
       }
     }
 
+    // Voting fetcher
     async function fetchVotes() {
       try {
         let response = await fetch(POLL_URL);
@@ -95,6 +103,10 @@
             gapElem.innerText = `Gap: 0 (Tied)`;
           }
 
+          // log update
+          let now = new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" });
+          logUpdate(`${now} → Fyang: ${fyang.toLocaleString()}, Will: ${will.toLocaleString()}, Gap: ${diff.toLocaleString()}`);
+
           prevFyang = fyang;
           prevWill = will;
           prevDiff = diff;
@@ -106,9 +118,17 @@
       }
     }
 
-    // ✅ Start the clock (ticks every second)
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
+    // Align updates exactly on 10s intervals
+    function scheduleFetch() {
+      let now = new Date();
+      let delay = 10000 - (now.getSeconds() * 1000 + now.getMilliseconds()) % 10000;
+      setTimeout(() => {
+        fetchVotes();
+        setInterval(fetchVotes, 10000);
+      }, delay);
+    }
+
+    scheduleFetch();
   </script>
 </body>
 </html>

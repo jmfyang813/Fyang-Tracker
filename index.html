@@ -4,15 +4,14 @@
   <title>Live Vote Tracker</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; background: #fafafa; }
-    .box { font-size: 28px; padding: 25px; border-radius: 12px; background: #fff; display: inline-block; box-shadow: 0 0 12px rgba(0,0,0,0.1); }
-    .title { font-size: 36px; margin-bottom: 20px; font-weight: bold; }
-    .candidate { margin: 15px 0; }
-    .gap-green { color: green; font-weight: bold; font-size: 30px; }
-    .gap-red { color: red; font-weight: bold; font-size: 30px; }
-    .added { font-size: 20px; color: #555; }
-    .clock { margin-top: 20px; font-size: 22px; color: #333; }
-    .log { margin-top: 25px; padding: 15px; width: 400px; max-width: 90%; margin-left: auto; margin-right: auto; background: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: left; font-size: 16px; }
-    .log-entry { margin-bottom: 8px; }
+    .box { font-size: 22px; padding: 20px; border-radius: 12px; background: #fff; display: inline-block; box-shadow: 0 0 12px rgba(0,0,0,0.1); }
+    .title { font-size: 32px; margin-bottom: 20px; font-weight: bold; }
+    .candidate { margin: 10px 0; }
+    .gap-green { color: green; font-weight: bold; }
+    .gap-red { color: red; font-weight: bold; }
+    .added { font-size: 18px; color: #555; }
+    .log { margin-top: 20px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .log-entry { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
@@ -21,40 +20,23 @@
     <div class="candidate" id="fyang"></div>
     <div class="candidate" id="will"></div>
     <div class="candidate" id="gap"></div>
-    <div class="clock" id="clock"></div>
+    <div class="candidate" id="clock"></div>
   </div>
 
-  <div class="log" id="log">
-    <b>Last 5 Updates:</b>
-  </div>
+  <div class="log" id="log"></div>
 
   <script>
     const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
     let prevFyang = null, prevWill = null, prevDiff = null;
+    let logs = [];
 
-    // Clock updater (every second)
     function updateClock() {
-      let now = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
-      document.getElementById("clock").innerText = "⏱ " + now;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // Function to log updates (keep only last 5)
-    function logUpdate(text) {
-      let logBox = document.getElementById("log");
-      let entry = document.createElement("div");
-      entry.className = "log-entry";
-      entry.innerText = text;
-      logBox.appendChild(entry);
-
-      // remove old entries if more than 5
-      while (logBox.getElementsByClassName("log-entry").length > 5) {
-        logBox.removeChild(logBox.getElementsByClassName("log-entry")[0]);
-      }
+      const now = new Date();
+      const options = { hour: "2-digit", minute: "2-digit", second: "2-digit" };
+      document.getElementById("clock").innerText =
+        "⏱ " + now.toLocaleTimeString("en-US", options);
     }
 
-    // Voting fetcher
     async function fetchVotes() {
       try {
         let response = await fetch(POLL_URL);
@@ -65,7 +47,7 @@
         let fyang = null, will = null;
         for (let m of matches) {
           let name = m[1].trim().toUpperCase();
-          let votes = parseInt(m[2].replace(/,/g, ''));
+          let votes = parseInt(m[2].replace(/,/g, ""));
           if (name.includes("FYANG")) fyang = votes;
           if (name.includes("WILL ASHLEY")) will = votes;
         }
@@ -86,26 +68,30 @@
 
           let diff = fyang - will;
           let diffAdded = prevDiff !== null ? diff - prevDiff : 0;
-          let gapElem = document.getElementById("gap");
+          let gapText = "";
 
           if (diff > 0) {
-            gapElem.className = "gap-green";
-            gapElem.innerHTML = `Gap: ${diff.toLocaleString()} <span class="added">(${
-              diffAdded >= 0 ? "+" : ""
-            }${diffAdded.toLocaleString()})</span> Fyang leading`;
+            gapText = `Gap: ${diff.toLocaleString()} (+${diffAdded.toLocaleString()}) Fyang leading`;
+            document.getElementById("gap").className = "gap-green";
           } else if (diff < 0) {
-            gapElem.className = "gap-red";
-            gapElem.innerHTML = `Gap: ${Math.abs(diff).toLocaleString()} <span class="added">(${
-              diffAdded >= 0 ? "+" : ""
-            }${diffAdded.toLocaleString()})</span> Will leading`;
+            gapText = `Gap: ${Math.abs(diff).toLocaleString()} (+${diffAdded.toLocaleString()}) Will leading`;
+            document.getElementById("gap").className = "gap-red";
           } else {
-            gapElem.className = "";
-            gapElem.innerText = `Gap: 0 (Tied)`;
+            gapText = "Gap: 0 (Tied)";
           }
 
-          // log update
-          let now = new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" });
-          logUpdate(`${now} → Fyang: ${fyang.toLocaleString()}, Will: ${will.toLocaleString()}, Gap: ${diff.toLocaleString()}`);
+          document.getElementById("gap").innerText = gapText;
+
+          // Save log entry
+          let now = new Date();
+          let time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          let logEntry = `⏱ ${time} → Fyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()}), Will : ${will.toLocaleString()} (+${willAdded.toLocaleString()}), ${gapText}`;
+
+          logs.unshift(logEntry); // add new entry at top
+          if (logs.length > 5) logs.pop(); // keep only 5
+
+          let logDiv = document.getElementById("log");
+          logDiv.innerHTML = logs.map(l => `<div class="log-entry">${l}</div>`).join("");
 
           prevFyang = fyang;
           prevWill = will;
@@ -118,17 +104,18 @@
       }
     }
 
-    // Align updates exactly on 10s intervals
-    function scheduleFetch() {
-      let now = new Date();
-      let delay = 10000 - (now.getSeconds() * 1000 + now.getMilliseconds()) % 10000;
+    function scheduleUpdates() {
+      const now = new Date();
+      let delay = 10000 - (now.getTime() % 10000); // align to 10s interval
       setTimeout(() => {
         fetchVotes();
-        setInterval(fetchVotes, 10000);
+        scheduleUpdates();
       }, delay);
     }
 
-    scheduleFetch();
+    updateClock();
+    setInterval(updateClock, 1000);
+    scheduleUpdates();
   </script>
 </body>
 </html>

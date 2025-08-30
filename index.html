@@ -88,7 +88,7 @@
           let logEntry = `⏱ ${time} → Fyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()}), Will : ${will.toLocaleString()} (+${willAdded.toLocaleString()}), ${gapText}`;
 
           logs.unshift(logEntry); // add new entry at top
-          if (logs.length > 5) logs.pop(); // keep only 5
+          if (logs.length > 20) logs.pop(); // keep only 20
 
           let logDiv = document.getElementById("log");
           logDiv.innerHTML = logs.map(l => `<div class="log-entry">${l}</div>`).join("");
@@ -119,3 +119,4 @@
   </script>
 </body>
 </html>
+

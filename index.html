@@ -26,7 +26,7 @@
     const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
     let prevFyang = null, prevWill = null, prevDiff = null;
 
-    // ✅ Function to show Philippine date & time
+    // ✅ Show Philippine date & time (updates every second)
     function updateDateTime() {
       const now = new Date();
       const options = {
@@ -40,6 +40,11 @@
       };
       document.getElementById("datetime").innerText =
         new Intl.DateTimeFormat("en-PH", options).format(now) + " (Philippines Time)";
+
+      // Every 10 seconds (exactly at :00, :10, :20...)
+      if (now.getSeconds() % 10 === 0) {
+        fetchVotes();
+      }
     }
 
     async function fetchVotes() {
@@ -101,11 +106,9 @@
       }
     }
 
-    // Run both functions
-    fetchVotes();
-    setInterval(fetchVotes, 10000); // update every 10 sec
+    // ✅ Start the clock (ticks every second)
     updateDateTime();
-    setInterval(updateDateTime, 1000); // update clock every 1 sec
+    setInterval(updateDateTime, 1000);
   </script>
 </body>
 </html>

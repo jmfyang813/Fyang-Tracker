@@ -106,7 +106,7 @@
 
     function scheduleUpdates() {
       const now = new Date();
-      let delay = 10000 - (now.getTime() % 10000); // align to 10s interval
+      let delay = 2000 - (now.getTime() % 10000); // align to 2s interval
       setTimeout(() => {
         fetchVotes();
         scheduleUpdates();
@@ -119,3 +119,4 @@
   </script>
 </body>
 </html>
+

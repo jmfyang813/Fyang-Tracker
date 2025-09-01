@@ -1,3 +1,5 @@
+make this script update every 2 seconds
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -82,7 +84,7 @@
 
           document.getElementById("gap").innerText = gapText;
 
-          // Save log entry
+          // Save log entry in requested format
           let now = new Date();
           let time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
           let logEntry = `⏱ ${time}\nFyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()})\nWill : ${will.toLocaleString()} (+${willAdded.toLocaleString()})\n${gapText}`;
@@ -104,13 +106,18 @@
       }
     }
 
-    // Clock updates every second
+    function scheduleUpdates() {
+      const now = new Date();
+      let delay = 10000 - (now.getTime() % 10000); // align to 10s interval
+      setTimeout(() => {
+        fetchVotes();
+        scheduleUpdates();
+      }, delay);
+    }
+
     updateClock();
     setInterval(updateClock, 1000);
-
-    // Fetch immediately, then every 2 seconds
-    fetchVotes();
-    setInterval(fetchVotes, 2000);
+    scheduleUpdates();
   </script>
 </body>
 </html>

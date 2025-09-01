@@ -82,7 +82,7 @@
 
           document.getElementById("gap").innerText = gapText;
 
-          // Save log entry in requested format
+          // Save log entry
           let now = new Date();
           let time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
           let logEntry = `⏱ ${time}\nFyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()})\nWill : ${will.toLocaleString()} (+${willAdded.toLocaleString()})\n${gapText}`;
@@ -104,19 +104,13 @@
       }
     }
 
-    function scheduleUpdates() {
-      const now = new Date();
-      let delay = 2000 - (now.getTime() % 10000); // align to 2s interval
-      setTimeout(() => {
-        fetchVotes();
-        scheduleUpdates();
-      }, delay);
-    }
-
+    // Clock updates every second
     updateClock();
     setInterval(updateClock, 1000);
-    scheduleUpdates();
+
+    // Fetch immediately, then every 2 seconds
+    fetchVotes();
+    setInterval(fetchVotes, 2000);
   </script>
 </body>
 </html>
-

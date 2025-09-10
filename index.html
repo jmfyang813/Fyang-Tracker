@@ -30,9 +30,6 @@ PH_TZ = pytz.timezone("Asia/Manila")
 # HELPER FUNCTION
 # ------------------------------
 def fetch_graphql(doc_id, variables, friendly_name):
-    """
-    Sends a GraphQL POST request and returns JSON response.
-    """
     data = {
         "fb_dtsg": fb_dtsg,
         "jazoest": jazoest,

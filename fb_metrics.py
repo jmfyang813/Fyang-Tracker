@@ -1,0 +1,132 @@
+# filename: fb_metrics.py
+import requests
+from datetime import datetime
+import pytz
+
+# ------------------------------
+# CONFIG
+# ------------------------------
+posts = {
+    "Fyang": "ZmVlZGJhY2s6MTIyMjQwNjQ1NDMyMDc0NjE5",
+    "Maloi": "ZmVlZGJhY2s6MTIyMjQwNjQ0NzI0MDc0NjE5",
+    "Stell": "ZmVlZGJhY2s6MTIyMjQwNjQ0NzcyMDc0NjE5"
+}
+
+fb_dtsg = "NAftSGxIH9AA8B7cF4KEPlkV91fVtVk8BBF6PCwammW74JUDqwbQUFw:16:1756974490"
+lsd = "R6U-Xyv2MmVrp9n2toO85y"
+jazoest = "25547"
+
+headers = {
+    "accept": "*/*",
+    "content-type": "application/x-www-form-urlencoded",
+    "x-asbd-id": "359341",
+    "x-fb-lsd": lsd
+}
+
+graphql_url = "https://www.facebook.com/api/graphql/"
+PH_TZ = pytz.timezone("Asia/Manila")
+
+
+# ------------------------------
+# HELPER FUNCTION
+# ------------------------------
+def fetch_graphql(doc_id, variables, friendly_name):
+    data = {
+        "fb_dtsg": fb_dtsg,
+        "jazoest": jazoest,
+        "fb_api_caller_class": "RelayModern",
+        "fb_api_req_friendly_name": friendly_name,
+        "variables": str(variables).replace("'", '"'),
+        "doc_id": doc_id,
+        "server_timestamps": "true"
+    }
+    try:
+        response = requests.post(graphql_url, headers=headers, data=data, cookies={})
+        return response.json()
+    except Exception as e:
+        print(f"❌ Failed to parse response for {friendly_name}: {e}")
+        return None
+
+
+# ------------------------------
+# MAIN FUNCTION
+# ------------------------------
+def main():
+    current_time = datetime.now(PH_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
+    rows = []
+    for name, post_id in posts.items():
+        # Reactions
+        reactions_data = fetch_graphql(
+            "24051433444544934",
+            {"feedbackTargetID": post_id, "scale": 1},
+            "CometUFIReactionsDialogQuery"
+        )
+        reactions_summary = reactions_data.get("data", {}).get("node", {}).get("top_reactions", {}).get("summary", [])
+        total_reactions = sum(r.get("reaction_count", 0) for r in reactions_summary)
+
+        # Comments
+        comments_data = fetch_graphql(
+            "23985348781089875",
+            {"feedbackTargetID": post_id},
+            "CometUFICommentsCountTooltipContentQuery"
+        )
+        total_comments = comments_data.get("data", {}).get("feedback", {}).get("comment_rendering_instance", {}).get("comments", {}).get("total_count", 0)
+
+        # Shares
+        shares_data = fetch_graphql(
+            "9843821265734688",
+            {"feedbackTargetID": post_id},
+            "CometUFISharesCountTooltipContentQuery"
+        )
+        total_shares = shares_data.get("data", {}).get("feedback", {}).get("reshares", {}).get("count", 0)
+
+        # Total
+        total_all = total_reactions + total_comments + total_shares
+
+        rows.append((name, total_reactions, total_comments, total_shares, total_all))
+
+    # ------------------------------
+    # BUILD HTML
+    # ------------------------------
+    html = f"""
+    <html>
+    <head>
+        <title>Facebook Post Metrics</title>
+        <meta charset="utf-8"/>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; }}
+            h2 {{ color: #333; }}
+            table {{ border-collapse: collapse; width: 100%; max-width: 600px; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: center; }}
+            th {{ background-color: #f4f4f4; }}
+        </style>
+    </head>
+    <body>
+        <h2>📊 Facebook Post Metrics</h2>
+        <p>Last Updated: {current_time}</p>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Reactions</th>
+                <th>Comments</th>
+                <th>Shares</th>
+                <th>Total</th>
+            </tr>
+    """
+
+    for row in rows:
+        html += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
+
+    html += """
+        </table>
+    </body>
+    </html>
+    """
+
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,122 +1,88 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Live Vote Tracker</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; background: #fafafa; }
-    .box { font-size: 22px; padding: 20px; border-radius: 12px; background: #fff; display: inline-block; box-shadow: 0 0 12px rgba(0,0,0,0.1); }
-    .title { font-size: 32px; margin-bottom: 20px; font-weight: bold; }
-    .candidate { margin: 10px 0; }
-    .gap-green { color: green; font-weight: bold; }
-    .gap-red { color: red; font-weight: bold; }
-    .added { font-size: 18px; color: #555; }
-    .log { margin-top: 20px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; }
-    .log-entry { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); white-space: pre-line; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <div class="title">Live Vote Counter</div>
-    <div class="candidate" id="fyang"></div>
-    <div class="candidate" id="will"></div>
-    <div class="candidate" id="gap"></div>
-    <div class="candidate" id="clock"></div>
-  </div>
+import requests
+import time
 
-  <div class="log" id="log"></div>
+# ------------------------------
+# CONFIG
+# ------------------------------
+posts = {
+    "Fyang": "ZmVlZGJhY2s6MTIyMjQwNjQ1NDMyMDc0NjE5",
+    "Maloi": "ZmVlZGJhY2s6MTIyMjQwNjQ0NzI0MDc0NjE5",
+    "Stell": "ZmVlZGJhY2s6MTIyMjQwNjQ0NzcyMDc0NjE5"
+}
 
-  <script>
-    const POLL_URL = "https://polls.polldaddy.com/vote-js.php?p=15909793";
-    let prevFyang = null, prevWill = null, prevDiff = null;
-    let logs = [];
+fb_dtsg = "NAftSGxIH9AA8B7cF4KEPlkV91fVtVk8BBF6PCwammW74JUDqwbQUFw:16:1756974490"
+lsd = "R6U-Xyv2MmVrp9n2toO85y"
+jazoest = "25547"
 
-    function updateClock() {
-      const now = new Date();
-      const options = { hour: "2-digit", minute: "2-digit", second: "2-digit" };
-      document.getElementById("clock").innerText =
-        "⏱ " + now.toLocaleTimeString("en-US", options);
+headers = {
+    "accept": "*/*",
+    "content-type": "application/x-www-form-urlencoded",
+    "x-asbd-id": "359341",
+    "x-fb-lsd": lsd
+}
+
+graphql_url = "https://www.facebook.com/api/graphql/"
+
+# ------------------------------
+# HELPER FUNCTION
+# ------------------------------
+def fetch_graphql(doc_id, variables, friendly_name):
+    """
+    Sends a GraphQL POST request and returns JSON response.
+    """
+    data = {
+        "fb_dtsg": fb_dtsg,
+        "jazoest": jazoest,
+        "fb_api_caller_class": "RelayModern",
+        "fb_api_req_friendly_name": friendly_name,
+        "variables": str(variables).replace("'", '"'),
+        "doc_id": doc_id,
+        "server_timestamps": "true"
     }
+    response = requests.post(graphql_url, headers=headers, data=data, cookies={})
+    try:
+        return response.json()
+    except Exception as e:
+        print(f"❌ Failed to parse response for {friendly_name}: {e}")
+        return None
 
-    async function fetchVotes() {
-      try {
-        let response = await fetch(POLL_URL);
-        let text = await response.text();
+# ------------------------------
+# LOOP TO UPDATE EVERY 1 MINUTE
+# ------------------------------
+while True:
+    print("\n==============================")
+    print("Updating Facebook post data...\n")
 
-        let matches = [...text.matchAll(/class="pds-answer-text"[^>]*>(.*?)<\/span>.*?\(([\d,]+)\s+votes\)/gs)];
+    for name, post_id in posts.items():
+        print(f"----- {name} -----")
 
-        let fyang = null, will = null;
-        for (let m of matches) {
-          let name = m[1].trim().toUpperCase();
-          let votes = parseInt(m[2].replace(/,/g, ""));
-          if (name.includes("FYANG")) fyang = votes;
-          if (name.includes("WILL ASHLEY")) will = votes;
-        }
+        # 1️⃣ Reactions
+        reactions_data = fetch_graphql(
+            "24051433444544934",
+            {"feedbackTargetID": post_id, "scale": 1},
+            "CometUFIReactionsDialogQuery"
+        )
+        reactions_summary = reactions_data.get("data", {}).get("node", {}).get("top_reactions", {}).get("summary", [])
+        total_reactions = sum(r.get("reaction_count", 0) for r in reactions_summary)
+        print("Total Reactions:", total_reactions)
 
-        if (fyang !== null && will !== null) {
-          let fyangAdded = prevFyang !== null ? fyang - prevFyang : 0;
-          let willAdded = prevWill !== null ? will - prevWill : 0;
+        # 2️⃣ Comments
+        comments_data = fetch_graphql(
+            "23985348781089875",
+            {"feedbackTargetID": post_id},
+            "CometUFICommentsCountTooltipContentQuery"
+        )
+        total_comments = comments_data.get("data", {}).get("feedback", {}).get("comment_rendering_instance", {}).get("comments", {}).get("total_count", 0)
+        print("Total Comments:", total_comments)
 
-          document.getElementById("fyang").innerHTML =
-            `Fyang : ${fyang.toLocaleString()} <span class="added">(+${
-              fyangAdded.toLocaleString()
-            })</span>`;
+        # 3️⃣ Shares
+        shares_data = fetch_graphql(
+            "9843821265734688",
+            {"feedbackTargetID": post_id},
+            "CometUFISharesCountTooltipContentQuery"
+        )
+        total_shares = shares_data.get("data", {}).get("feedback", {}).get("reshares", {}).get("count", 0)
+        print("Total Shares:", total_shares)
 
-          document.getElementById("will").innerHTML =
-            `Will : ${will.toLocaleString()} <span class="added">(+${
-              willAdded.toLocaleString()
-            })</span>`;
-
-          let diff = fyang - will;
-          let diffAdded = prevDiff !== null ? diff - prevDiff : 0;
-          let gapText = "";
-
-          if (diff > 0) {
-            gapText = `Gap: ${diff.toLocaleString()} (${diffAdded >= 0 ? "+" : ""}${diffAdded.toLocaleString()}) Fyang leading`;
-            document.getElementById("gap").className = "gap-green";
-          } else if (diff < 0) {
-            gapText = `Gap: ${Math.abs(diff).toLocaleString()} (${diffAdded >= 0 ? "+" : ""}${diffAdded.toLocaleString()}) Will leading`;
-            document.getElementById("gap").className = "gap-red";
-          } else {
-            gapText = "Gap: 0 (Tied)";
-          }
-
-          document.getElementById("gap").innerText = gapText;
-
-          // Save log entry in requested format
-          let now = new Date();
-          let time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-          let logEntry = `⏱ ${time}\nFyang : ${fyang.toLocaleString()} (+${fyangAdded.toLocaleString()})\nWill : ${will.toLocaleString()} (+${willAdded.toLocaleString()})\n${gapText}`;
-
-          logs.unshift(logEntry); // add new entry at top
-          if (logs.length > 20) logs.pop(); // keep only last 20
-
-          let logDiv = document.getElementById("log");
-          logDiv.innerHTML = logs.map(l => `<div class="log-entry">${l}</div>`).join("");
-
-          prevFyang = fyang;
-          prevWill = will;
-          prevDiff = diff;
-        } else {
-          document.getElementById("gap").innerText = "⚠️ Candidates not found";
-        }
-      } catch (err) {
-        document.getElementById("gap").innerText = "⚠️ Fetch failed";
-      }
-    }
-
-    function scheduleUpdates() {
-      const now = new Date();
-      let delay = 10000 - (now.getTime() % 10000); // align to 10s interval
-      setTimeout(() => {
-        fetchVotes();
-        scheduleUpdates();
-      }, delay);
-    }
-
-    updateClock();
-    setInterval(updateClock, 1000);
-    scheduleUpdates();
-  </script>
-</body>
-</html>
-
+    print("\nWaiting 1 minute before next update...")
+    time.sleep(60)  # wait for 60 seconds

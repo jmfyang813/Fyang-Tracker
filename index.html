@@ -86,7 +86,9 @@ def main():
 
         rows.append((name, total_reactions, total_comments, total_shares, total_all))
 
-    # Build HTML
+    # ------------------------------
+    # BUILD HTML
+    # ------------------------------
     html = f"""
     <html>
     <head>
@@ -112,6 +114,7 @@ def main():
                 <th>Total</th>
             </tr>
     """
+
     for row in rows:
         html += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
 

@@ -1,1 +1,103 @@
+import streamlit as st
+import requests
+from datetime import datetime
+import pytz
+import pandas as pd
+
+# ------------------------------
+# CONFIG
+# ------------------------------
+posts = {
+    "Fyang": "ZmVlZGJhY2s6MTIyMjQwNjQ1NDMyMDc0NjE5",
+    "Maloi": "ZmVlZGJhY2s6MTIyMjQwNjQ0NzI0MDc0NjE5",
+    "Stell": "ZmVlZGJhY2s6MTIyMjQwNjQ0NzcyMDc0NjE5"
+}
+
+fb_dtsg = "NAftSGxIH9AA8B7cF4KEPlkV91fVtVk8BBF6PCwammW74JUDqwbQUFw:16:1756974490"
+lsd = "R6U-Xyv2MmVrp9n2toO85y"
+jazoest = "25547"
+
+headers = {
+    "accept": "*/*",
+    "content-type": "application/x-www-form-urlencoded",
+    "x-asbd-id": "359341",
+    "x-fb-lsd": lsd
+}
+
+graphql_url = "https://www.facebook.com/api/graphql/"
+
+PH_TZ = pytz.timezone("Asia/Manila")
+
+# ------------------------------
+# HELPER FUNCTION
+# ------------------------------
+def fetch_graphql(doc_id, variables, friendly_name):
+    data = {
+        "fb_dtsg": fb_dtsg,
+        "jazoest": jazoest,
+        "fb_api_caller_class": "RelayModern",
+        "fb_api_req_friendly_name": friendly_name,
+        "variables": str(variables).replace("'", '"'),
+        "doc_id": doc_id,
+        "server_timestamps": "true"
+    }
+    response = requests.post(graphql_url, headers=headers, data=data, cookies={})
+    try:
+        return response.json()
+    except Exception as e:
+        st.error(f"Failed to parse response for {friendly_name}: {e}")
+        return None
+
+# ------------------------------
+# STREAMLIT PAGE
+# ------------------------------
+st.set_page_config(page_title="Facebook Post Metrics", layout="wide")
+st.title("📊 Facebook Post Engagement Tracker")
+
+current_time = datetime.now(PH_TZ).strftime("%Y-%m-%d %H:%M:%S")
+st.subheader(f"Last Updated: {current_time}")
+
+# Fetch metrics for all posts
+data = []
+for name, post_id in posts.items():
+    # Reactions
+    reactions_data = fetch_graphql(
+        "24051433444544934",
+        {"feedbackTargetID": post_id, "scale": 1},
+        "CometUFIReactionsDialogQuery"
+    )
+    reactions_summary = reactions_data.get("data", {}).get("node", {}).get("top_reactions", {}).get("summary", [])
+    total_reactions = sum(r.get("reaction_count", 0) for r in reactions_summary)
+
+    # Comments
+    comments_data = fetch_graphql(
+        "23985348781089875",
+        {"feedbackTargetID": post_id},
+        "CometUFICommentsCountTooltipContentQuery"
+    )
+    total_comments = comments_data.get("data", {}).get("feedback", {}).get("comment_rendering_instance", {}).get("comments", {}).get("total_count", 0)
+
+    # Shares
+    shares_data = fetch_graphql(
+        "9843821265734688",
+        {"feedbackTargetID": post_id},
+        "CometUFISharesCountTooltipContentQuery"
+    )
+    total_shares = shares_data.get("data", {}).get("feedback", {}).get("reshares", {}).get("count", 0)
+
+    total_all = total_reactions + total_comments + total_shares
+
+    data.append({
+        "Name": name,
+        "Reactions": total_reactions,
+        "Comments": total_comments,
+        "Shares": total_shares,
+        "Total": total_all
+    })
+
+# Display as a DataFrame
+df = pd.DataFrame(data)
+df = df.sort_values(by="Total", ascending=False)
+st.dataframe(df, use_container_width=True)
+
 
